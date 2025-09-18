@@ -6,13 +6,11 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import globalReducer from "@/state";
-import authReducer from "@/state/authSlice";
 import { api } from "@/state/api";
 
 /* REDUX STORE */
 const rootReducer = combineReducers({
   global: globalReducer,
-  auth: authReducer,
   [api.reducerPath]: api.reducer,
 });
 

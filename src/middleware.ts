@@ -1,21 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth } from '@/auth'
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
 
   // If the user is on "/" redirect to "/landing"
   if (pathname === "/") {
-    const url = request.nextUrl.clone();
+    const url = req.nextUrl.clone();
     url.pathname = "/landing";
     return NextResponse.redirect(url);
   }
 
-  // Get auth token from cookies or localStorage (handled client-side)
-  const authToken = request.cookies.get('auth_token')?.value;
+  const isAuthenticated = !!req.auth;
+  const needsRoleSelection = req.auth?.user?.needsRoleSelection;
 
   // Protected routes
   const protectedRoutes = ['/dashboard', '/profile', '/properties/create', '/managers', '/tenants']
   const authRoutes = ['/auth/login', '/auth/register']
+  const roleSelectionRoute = '/auth/select-role'
 
   const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)
@@ -23,21 +25,38 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some(route =>
     pathname.startsWith(route)
   )
+  const isRoleSelectionRoute = pathname.startsWith(roleSelectionRoute)
+
+  // If user needs role selection and is not on role selection page
+  if (isAuthenticated && needsRoleSelection && !isRoleSelectionRoute) {
+    const redirectUrl = new URL('/auth/select-role', req.url)
+    redirectUrl.searchParams.set('email', req.auth?.user.email || '')
+    redirectUrl.searchParams.set('name', req.auth?.user.name || '')
+    redirectUrl.searchParams.set('image', req.auth?.user.image || '')
+    redirectUrl.searchParams.set('provider', req.auth?.user.provider || '')
+    redirectUrl.searchParams.set('providerId', req.auth?.user.providerId || '')
+    return NextResponse.redirect(redirectUrl)
+  }
 
   // Redirect unauthenticated users from protected routes
-  if (isProtectedRoute && !authToken) {
-    const redirectUrl = new URL('/auth/login', request.url)
+  if (isProtectedRoute && !isAuthenticated) {
+    const redirectUrl = new URL('/auth/login', req.url)
     redirectUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect authenticated users from auth routes
-  if (isAuthRoute && authToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Redirect authenticated users from auth routes (except role selection)
+  if (isAuthRoute && isAuthenticated && !needsRoleSelection) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  // Redirect users who don't need role selection away from role selection page
+  if (isRoleSelectionRoute && isAuthenticated && !needsRoleSelection) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: [

@@ -17,6 +17,18 @@ export const ourFileRouter = {
 
       return { uploadedBy: metadata.userId, url: file.url };
     }),
+
+  profileImageUploader: f({ image: { maxFileSize: "2MB", maxFileCount: 1 } })
+    .middleware(async ({ req }) => {
+      // Allow profile image uploads for registration
+      return { userId: "registration" };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Profile image upload complete for:", metadata.userId);
+      console.log("file url", file.url);
+
+      return { uploadedBy: metadata.userId, url: file.url };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

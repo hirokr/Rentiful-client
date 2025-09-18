@@ -2,37 +2,47 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
+const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3001";
+
 export default function SelectRolePage() {
-  const [selectedRole, setSelectedRole] = useState<'MANAGER' | 'TENANT'>('TENANT')
+  const [selectedRole, setSelectedRole] = useState<'tenant' | 'manager'>('tenant')
   const [loading, setLoading] = useState(false)
-  const [userInfo, setUserInfo] = useState<{ name: string; email: string } | null>(null)
+  const [userInfo, setUserInfo] = useState<{
+    name: string;
+    email: string;
+    image?: string;
+    provider?: string;
+    providerId?: string;
+  } | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: session, update } = useSession()
 
   useEffect(() => {
-    const tempUserId = searchParams.get('tempUserId')
     const email = searchParams.get('email')
     const name = searchParams.get('name')
+    const image = searchParams.get('image')
+    const provider = searchParams.get('provider')
+    const providerId = searchParams.get('providerId')
 
-    if (!tempUserId || !email || !name) {
+    if (!email || !name || !provider || !providerId) {
       toast.error('Invalid authentication state')
       router.push('/auth/login')
       return
     }
 
-    setUserInfo({ name, email })
+    setUserInfo({ name, email, image: image || undefined, provider, providerId })
   }, [searchParams, router])
 
   const handleRoleSelection = async () => {
-    const tempUserId = searchParams.get('tempUserId')
-    
-    if (!tempUserId) {
+    if (!userInfo) {
       toast.error('Invalid authentication state')
       router.push('/auth/login')
       return
@@ -41,14 +51,18 @@ export default function SelectRolePage() {
     setLoading(true)
 
     try {
-      const serverUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      const response = await fetch(`${serverUrl}/auth/oauth/complete`, {
+      // Create user with selected role
+      const response = await fetch(`${SERVER_URL}/auth/create-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tempUserId,
+          email: userInfo.email,
+          name: userInfo.name,
+          image: userInfo.image,
+          provider: userInfo.provider,
+          providerId: userInfo.providerId,
           role: selectedRole,
         }),
       })
@@ -58,10 +72,22 @@ export default function SelectRolePage() {
         throw new Error(error.message || 'Failed to complete registration')
       }
 
-      const data = await response.json()
-      
-      // Redirect to success page with token
-      router.push(`/auth/success?token=${data.token}`)
+      const userData = await response.json()
+
+      // Update the session to remove needsRoleSelection flag and add role
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          role: userData.role,
+          needsRoleSelection: false,
+        }
+      })
+
+      toast.success('Account setup completed successfully!')
+
+      // Redirect to dashboard
+      router.push('/dashboard')
     } catch (error: any) {
       console.error('Role selection error:', error)
       toast.error(error.message || 'Failed to complete registration')
@@ -92,10 +118,10 @@ export default function SelectRolePage() {
             <p>Email: {userInfo.email}</p>
           </div>
 
-          <RadioGroup value={selectedRole} onValueChange={(value) => setSelectedRole(value as 'MANAGER' | 'TENANT')}>
+          <RadioGroup value={selectedRole} onValueChange={(value) => setSelectedRole(value as 'tenant' | 'manager')}>
             <div className="space-y-4">
               <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                <RadioGroupItem value="TENANT" id="tenant" />
+                <RadioGroupItem value="tenant" id="tenant" />
                 <div className="flex-1">
                   <Label htmlFor="tenant" className="font-medium">
                     Tenant
@@ -105,9 +131,9 @@ export default function SelectRolePage() {
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                <RadioGroupItem value="MANAGER" id="manager" />
+                <RadioGroupItem value="manager" id="manager" />
                 <div className="flex-1">
                   <Label htmlFor="manager" className="font-medium">
                     Property Manager
@@ -120,9 +146,9 @@ export default function SelectRolePage() {
             </div>
           </RadioGroup>
 
-          <Button 
-            onClick={handleRoleSelection} 
-            className="w-full" 
+          <Button
+            onClick={handleRoleSelection}
+            className="w-full"
             disabled={loading}
           >
             {loading ? 'Setting up account...' : 'Continue'}

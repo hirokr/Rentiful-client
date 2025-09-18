@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { Button } from "./ui/button";
-import { useGetAuthUserQuery } from "@/state/api";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Bell, MessageCircle, Plus, Search } from "lucide-react";
@@ -22,8 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 
 const Navbar = () => {
-  const { data: authUser } = useGetAuthUserQuery();
-  const { logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -67,19 +65,19 @@ const Navbar = () => {
               </div>
             </div>
           </Link>
-          {isDashboardPage && authUser && (
+          {isDashboardPage && user && (
             <Button
               variant="secondary"
               className="md:ml-4 bg-primary-50 text-primary-700 hover:bg-secondary-500 hover:text-primary-50"
               onClick={() =>
                 router.push(
-                  authUser.userRole?.toLowerCase() === "manager"
+                  user.role === "manager"
                     ? "/managers/newproperty"
                     : "/search"
                 )
               }
             >
-              {authUser.userRole?.toLowerCase() === "manager" ? (
+              {user.role === "manager" ? (
                 <>
                   <Plus className="h-4 w-4" />
                   <span className="hidden md:block ml-2">Add New Property</span>
@@ -101,7 +99,7 @@ const Navbar = () => {
           </p>
         )}
         <div className="flex items-center gap-5">
-          {authUser ? (
+          {isAuthenticated && user ? (
             <>
               <div className="relative hidden md:block">
                 <MessageCircle className="w-6 h-6 cursor-pointer text-primary-200 hover:text-primary-400" />
@@ -115,13 +113,13 @@ const Navbar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2 focus:outline-none">
                   <Avatar>
-                    <AvatarImage src={authUser.userInfo?.image} />
+                    <AvatarImage src={user.image || undefined} />
                     <AvatarFallback className="bg-primary-600">
-                      {authUser.userRole?.[0].toUpperCase()}
+                      {user.name?.[0]?.toUpperCase() || user.role?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <p className="text-primary-200 hidden md:block">
-                    {authUser.userInfo?.name}
+                    {user.name}
                   </p>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-white text-primary-700">
@@ -129,7 +127,7 @@ const Navbar = () => {
                     className="cursor-pointer hover:!bg-primary-700 hover:!text-primary-100 font-bold"
                     onClick={() =>
                       router.push(
-                        authUser.userRole?.toLowerCase() === "manager"
+                        user.role === "manager"
                           ? "/managers/properties"
                           : "/tenants/favorites",
                         { scroll: false }
@@ -143,7 +141,7 @@ const Navbar = () => {
                     className="cursor-pointer hover:!bg-primary-700 hover:!text-primary-100"
                     onClick={() =>
                       router.push(
-                        `/${authUser.userRole?.toLowerCase()}s/settings`,
+                        `/${user.role}s/settings`,
                         { scroll: false }
                       )
                     }
@@ -169,7 +167,7 @@ const Navbar = () => {
                   Sign In
                 </Button>
               </Link>
-              <Link href="c/register">
+              <Link href="/auth/register">
                 <Button
                   variant="secondary"
                   className="text-white bg-secondary-600 hover:bg-white hover:text-primary-700 rounded-lg"

@@ -1,36 +1,26 @@
-import { useAppSelector, useAppDispatch } from '@/state/redux';
-import { loginUser, registerUser, logoutUser, validateToken } from '@/state/authSlice';
-import type { LoginCredentials, RegisterCredentials } from '@/lib/auth';
+import { useSession, signOut } from 'next-auth/react';
 
 export const useAuth = () => {
-  const dispatch = useAppDispatch();
-  const { user, token, isAuthenticated, loading, error } = useAppSelector((state) => state.auth);
-
-  const login = async (credentials: LoginCredentials) => {
-    return dispatch(loginUser(credentials));
-  };
-
-  const register = async (credentials: RegisterCredentials) => {
-    return dispatch(registerUser(credentials));
-  };
+  const { data: session, status } = useSession();
 
   const logout = async () => {
-    return dispatch(logoutUser());
-  };
-
-  const validate = async () => {
-    return dispatch(validateToken());
+    await signOut({ callbackUrl: '/auth/login' });
   };
 
   return {
-    user,
-    token,
-    isAuthenticated,
-    loading,
-    error,
-    login,
-    register,
+    user: session?.user ? {
+      userId: session.user.id,
+      email: session.user.email || '',
+      name: session.user.name || '',
+      role: session.user.role || '',
+      image: session.user.image,
+      provider: session.user.provider,
+      needsRoleSelection: session.user.needsRoleSelection,
+    } : null,
+    session,
+    isAuthenticated: status === 'authenticated' && !session?.user?.needsRoleSelection,
+    loading: status === 'loading',
+    needsRoleSelection: session?.user?.needsRoleSelection || false,
     logout,
-    validate,
   };
 };

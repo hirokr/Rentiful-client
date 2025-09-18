@@ -1,54 +1,37 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useAppDispatch } from '@/state/redux'
-import { setAuthData } from '@/state/authSlice'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 
 export default function AuthSuccessPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const dispatch = useAppDispatch()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    const token = searchParams.get('token')
+    if (status === 'authenticated' && session?.user) {
+      toast.success('Successfully authenticated!')
 
-    if (token) {
-      // Decode the JWT to get user info (basic decode, not verification)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-
-        const userData = {
-          userId: payload.sub,
-          email: payload.email,
-          role: payload.role,
-          name: payload.name,
-        }
-
-        // Set auth data in Redux store
-        dispatch(setAuthData({ user: userData, token }))
-
-        toast.success('Successfully signed in with Google!')
-
-        // Check for redirect path
-        const redirectPath = sessionStorage.getItem('redirectAfterLogin')
-        if (redirectPath) {
-          sessionStorage.removeItem('redirectAfterLogin')
-          router.push(redirectPath)
-        } else {
-          router.push('/dashboard')
-        }
-      } catch (error) {
-        console.error('Error processing auth token:', error)
-        toast.error('Authentication failed')
-        router.push('/auth/login')
+      if (session.user.needsRoleSelection) {
+        // Redirect to role selection
+        const params = new URLSearchParams({
+          email: session.user.email || '',
+          name: session.user.name || '',
+          image: session.user.image || '',
+          provider: session.user.provider || '',
+          providerId: session.user.providerId || '',
+        })
+        router.push(`/auth/select-role?${params.toString()}`)
+      } else {
+        // Redirect to dashboard
+        router.push('/dashboard')
       }
-    } else {
-      toast.error('No authentication token received')
+    } else if (status === 'unauthenticated') {
+      toast.error('Authentication failed')
       router.push('/auth/login')
     }
-  }, [searchParams, dispatch, router])
+  }, [session, status, router])
 
   return (
     <div className="flex items-center justify-center min-h-screen">

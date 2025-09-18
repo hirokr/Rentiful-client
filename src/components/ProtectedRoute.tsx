@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'TENANT' | 'MANAGER';
+  requiredRole?: 'tenant' | 'manager';
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
