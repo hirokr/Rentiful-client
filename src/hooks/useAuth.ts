@@ -1,26 +1,32 @@
-import { useSession, signOut } from 'next-auth/react';
+'use client'
 
-export const useAuth = () => {
-  const { data: session, status } = useSession();
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
-  const logout = async () => {
-    await signOut({ callbackUrl: '/auth/login' });
-  };
+export function useAuth(requireAuth = true) {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (requireAuth && status === 'unauthenticated') {
+      router.push('/auth/signin')
+    }
+  }, [status, requireAuth, router])
 
   return {
-    user: session?.user ? {
-      userId: session.user.id,
-      email: session.user.email || '',
-      name: session.user.name || '',
-      role: session.user.role || '',
-      image: session.user.image,
-      provider: session.user.provider,
-      needsRoleSelection: session.user.needsRoleSelection,
-    } : null,
     session,
-    isAuthenticated: status === 'authenticated' && !session?.user?.needsRoleSelection,
-    loading: status === 'loading',
-    needsRoleSelection: session?.user?.needsRoleSelection || false,
-    logout,
-  };
-};
+    status,
+    isLoading: status === 'loading',
+    isAuthenticated: status === 'authenticated',
+    user: session?.user,
+  }
+}
+
+export function useRequireAuth() {
+  return useAuth(true)
+}
+
+export function useOptionalAuth() {
+  return useAuth(false)
+}

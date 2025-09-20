@@ -21,15 +21,9 @@ const Applications = () => {
     data: applications,
     isLoading,
     isError,
-  } = useGetApplicationsQuery(
-    {
-      userId: authUser?.cognitoInfo?.userId,
-      userType: "manager",
-    },
-    {
-      skip: !authUser?.cognitoInfo?.userId,
-    }
-  );
+  } = useGetApplicationsQuery(undefined, {
+    skip: !authUser?.cognitoInfo?.userId,
+  });
   const [updateApplicationStatus] = useUpdateApplicationStatusMutation();
 
   const handleStatusChange = async (id: number, status: string) => {
@@ -77,13 +71,12 @@ const Applications = () => {
                   <div className="flex justify-between gap-5 w-full pb-4 px-4">
                     {/* Colored Section Status */}
                     <div
-                      className={`p-4 text-green-700 grow ${
-                        application.status === "Approved"
+                      className={`p-4 text-green-700 grow ${application.status === "Approved"
                           ? "bg-green-100"
                           : application.status === "Denied"
-                          ? "bg-red-100"
-                          : "bg-yellow-100"
-                      }`}
+                            ? "bg-red-100"
+                            : "bg-yellow-100"
+                        }`}
                     >
                       <div className="flex flex-wrap items-center">
                         <File className="w-5 h-5 mr-2 flex-shrink-0" />
@@ -96,13 +89,12 @@ const Applications = () => {
                         </span>
                         <CircleCheckBig className="w-5 h-5 mr-2 flex-shrink-0" />
                         <span
-                          className={`font-semibold ${
-                            application.status === "Approved"
+                          className={`font-semibold ${application.status === "Approved"
                               ? "text-green-800"
                               : application.status === "Denied"
-                              ? "text-red-800"
-                              : "text-yellow-800"
-                          }`}
+                                ? "text-red-800"
+                                : "text-yellow-800"
+                            }`}
                         >
                           {application.status === "Approved" &&
                             "This application has been approved."}

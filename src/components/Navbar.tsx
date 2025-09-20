@@ -5,7 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { Button } from "./ui/button";
+import { useGetAuthUserQuery } from "@/state/api";
+import { useOptionalAuth } from "@/hooks/useAuth";
 import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 import { Bell, MessageCircle, Plus, Search } from "lucide-react";
 import {
@@ -17,11 +20,11 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { SidebarTrigger } from "./ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
 
 
 const Navbar = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { data: authUser } = useGetAuthUserQuery();
+  const { user } = useOptionalAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -29,7 +32,7 @@ const Navbar = () => {
     pathname.includes("/managers") || pathname.includes("/tenants");
 
   const handleSignOut = async () => {
-    await logout();
+    await signOut({ callbackUrl: '/auth/signin' });
   };
 
   return (
@@ -65,19 +68,19 @@ const Navbar = () => {
               </div>
             </div>
           </Link>
-          {isDashboardPage && user && (
+          {isDashboardPage && authUser && (
             <Button
               variant="secondary"
               className="md:ml-4 bg-primary-50 text-primary-700 hover:bg-secondary-500 hover:text-primary-50"
               onClick={() =>
                 router.push(
-                  user.role === "manager"
+                  authUser.userRole?.toLowerCase() === "manager"
                     ? "/managers/newproperty"
                     : "/search"
                 )
               }
             >
-              {user.role === "manager" ? (
+              {authUser.userRole?.toLowerCase() === "manager" ? (
                 <>
                   <Plus className="h-4 w-4" />
                   <span className="hidden md:block ml-2">Add New Property</span>
@@ -99,7 +102,7 @@ const Navbar = () => {
           </p>
         )}
         <div className="flex items-center gap-5">
-          {isAuthenticated && user ? (
+          {user ? (
             <>
               <div className="relative hidden md:block">
                 <MessageCircle className="w-6 h-6 cursor-pointer text-primary-200 hover:text-primary-400" />
@@ -113,9 +116,9 @@ const Navbar = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-2 focus:outline-none">
                   <Avatar>
-                    <AvatarImage src={user.image || undefined} />
+                    <AvatarImage src={user.image || ''} />
                     <AvatarFallback className="bg-primary-600">
-                      {user.name?.[0]?.toUpperCase() || user.role?.[0]?.toUpperCase()}
+                      {user.name?.[0]?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <p className="text-primary-200 hidden md:block">
@@ -127,7 +130,7 @@ const Navbar = () => {
                     className="cursor-pointer hover:!bg-primary-700 hover:!text-primary-100 font-bold"
                     onClick={() =>
                       router.push(
-                        user.role === "manager"
+                        user.role?.toLowerCase() === "manager"
                           ? "/managers/properties"
                           : "/tenants/favorites",
                         { scroll: false }
@@ -141,7 +144,7 @@ const Navbar = () => {
                     className="cursor-pointer hover:!bg-primary-700 hover:!text-primary-100"
                     onClick={() =>
                       router.push(
-                        `/${user.role}s/settings`,
+                        `/${user.role?.toLowerCase()}s/settings`,
                         { scroll: false }
                       )
                     }
@@ -159,7 +162,7 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link href="/auth/login">
+              <Link href="/auth/signin">
                 <Button
                   variant="outline"
                   className="text-white border-white bg-transparent hover:bg-white hover:text-primary-700 rounded-lg"

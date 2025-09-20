@@ -1,65 +1,55 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
+export async function middleware(request: NextRequest) {
+  const session = await auth()
+  const { pathname } = request.nextUrl
 
-  // If the user is on "/" redirect to "/landing"
-  if (pathname === "/") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/landing";
-    return NextResponse.redirect(url);
-  }
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/',
+    '/auth/signin',
+    '/auth/register',
+    '/auth/role-selection',
+    '/api/auth',
+  ]
 
-  const isAuthenticated = !!req.auth;
-  const needsRoleSelection = req.auth?.user?.needsRoleSelection;
-
-  // Protected routes
-  const protectedRoutes = ['/dashboard', '/profile', '/properties/create', '/managers', '/tenants']
-  const authRoutes = ['/auth/login', '/auth/register']
-  const roleSelectionRoute = '/auth/select-role'
-
-  const isProtectedRoute = protectedRoutes.some(route =>
-    pathname.startsWith(route)
+  // Check if the current path is a public route
+  const isPublicRoute = publicRoutes.some(route =>
+    pathname.startsWith(route) || pathname === route
   )
-  const isAuthRoute = authRoutes.some(route =>
-    pathname.startsWith(route)
-  )
-  const isRoleSelectionRoute = pathname.startsWith(roleSelectionRoute)
 
-  // If user needs role selection and is not on role selection page
-  if (isAuthenticated && needsRoleSelection && !isRoleSelectionRoute) {
-    const redirectUrl = new URL('/auth/select-role', req.url)
-    redirectUrl.searchParams.set('email', req.auth?.user.email || '')
-    redirectUrl.searchParams.set('name', req.auth?.user.name || '')
-    redirectUrl.searchParams.set('image', req.auth?.user.image || '')
-    redirectUrl.searchParams.set('provider', req.auth?.user.provider || '')
-    redirectUrl.searchParams.set('providerId', req.auth?.user.providerId || '')
-    return NextResponse.redirect(redirectUrl)
+  // If it's a public route, allow access
+  if (isPublicRoute) {
+    return NextResponse.next()
   }
 
-  // Redirect unauthenticated users from protected routes
-  if (isProtectedRoute && !isAuthenticated) {
-    const redirectUrl = new URL('/auth/login', req.url)
-    redirectUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(redirectUrl)
+  // If user is not authenticated and trying to access protected route
+  if (!session) {
+    const signInUrl = new URL('/auth/signin', request.url)
+    signInUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(signInUrl)
   }
 
-  // Redirect authenticated users from auth routes (except role selection)
-  if (isAuthRoute && isAuthenticated && !needsRoleSelection) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // Redirect users who don't need role selection away from role selection page
-  if (isRoleSelectionRoute && isAuthenticated && !needsRoleSelection) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+  // If user is authenticated but accessing auth pages, redirect to dashboard
+  if (session && (pathname.startsWith('/auth/signin') || pathname.startsWith('/auth/register'))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
   ],
 }

@@ -1,66 +1,95 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useSession, signIn } from 'next-auth/react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { signIn, getSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { ProfileImageUpload } from '@/components/ProfileImageUpload'
-
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3001";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faGoogle, faGithub } from '@fortawesome/free-brands-svg-icons'
+import { useUploadThing } from '@/utils/uploadthing'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    name: '',
     phoneNumber: '',
-    role: 'tenant' as 'tenant' | 'manager'
+    role: 'TENANT' as 'TENANT' | 'MANAGER'
   })
-  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const { data: session, status } = useSession()
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
-      if (session.user.needsRoleSelection) {
-        // Redirect to role selection with user info
-        const params = new URLSearchParams({
-          email: session.user.email || '',
-          name: session.user.name || '',
-          image: session.user.image || '',
-          provider: session.user.provider || '',
-          providerId: session.user.providerId || '',
-        })
-        router.push(`/auth/select-role?${params.toString()}`)
-      } else {
-        // User is fully authenticated, redirect to dashboard or intended page
-        const redirectTo = searchParams.get('redirectTo') || '/dashboard'
-        router.push(redirectTo)
+    const checkSession = async () => {
+      const session = await getSession()
+      if (session) {
+        router.push('/dashboard')
       }
     }
-  }, [session, status, router, searchParams])
+    checkSession()
+  }, [router])
+
+  const { startUpload } = useUploadThing("profileImage")
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleEmailRegister = async (e: React.FormEvent) => {
+  const handleImageDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    const files = Array.from(e.dataTransfer.files)
+    const imageFile = files.find(file => file.type.startsWith('image/'))
 
-    if (!formData.phoneNumber.trim()) {
-      toast.error('Phone number is required')
-      return
+    if (imageFile) {
+      setSelectedImageFile(imageFile)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(imageFile)
+      toast.success('Image selected! Click "Create Account" to upload.')
+    } else {
+      toast.error('Please select a valid image file')
     }
+  }, [])
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      setSelectedImageFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      toast.success('Image selected! Click "Create Account" to upload.')
+    } else {
+      toast.error('Please select a valid image file')
+    }
+  }
+
+  const removeImage = () => {
+    setSelectedImageFile(null)
+    setImagePreview(null)
+    setProfileImageUrl(null)
+    toast.success('Image removed')
+  }
+
+
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match')
@@ -75,69 +104,74 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      // Create user directly with server API
-      const response = await fetch(`${SERVER_URL}/auth/create-user`, {
+      let uploadedImageUrl = profileImageUrl
+
+      // Upload image if one is selected
+      if (selectedImageFile) {
+        toast.info('Uploading profile image...')
+        const uploadResult = await startUpload([selectedImageFile])
+        if (uploadResult && uploadResult[0]) {
+          uploadedImageUrl = uploadResult[0].url
+          toast.success('Profile image uploaded successfully!')
+        } else {
+          toast.error('Failed to upload profile image')
+          setLoading(false)
+          return
+        }
+      }
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/manual_register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: formData.name,
           email: formData.email,
           password: formData.password,
-          name: formData.name,
           phoneNumber: formData.phoneNumber,
           role: formData.role,
-          provider: 'credentials',
-          image: profileImage,
+          imageUrl: uploadedImageUrl,
         }),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Registration failed')
+      if (response.ok) {
+        toast.success('Account created successfully!')
+
+        // Automatically sign in the user
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          redirect: false,
+        })
+
+        if (result?.error) {
+          toast.error('Registration successful, but sign in failed. Please sign in manually.')
+          router.push('/auth/signin')
+        } else {
+          router.push('/dashboard')
+        }
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.message || 'Registration failed')
       }
-
-      toast.success('Registration successful! Signing you in...')
-
-      // Automatically sign in the user after successful registration
-      const signInResult = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      })
-
-      if (signInResult?.error) {
-        toast.error('Registration successful but auto-login failed. Please sign in manually.')
-        router.push('/auth/login')
-      } else if (signInResult?.ok) {
-        toast.success('Welcome! You have been signed in.')
-        // NextAuth will handle the redirect via the useEffect above
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Registration failed')
+    } catch (error) {
+      console.error('Registration error:', error)
+      toast.error('An error occurred during registration')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleOAuthRegister = async (provider: 'google' | 'github') => {
+  const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     setLoading(true)
     try {
-      await signIn(provider, {
-        callbackUrl: searchParams.get('redirectTo') || '/dashboard'
-      })
+      // Store selected role for OAuth flow
+      sessionStorage.setItem('selectedRole', formData.role)
+      await signIn(provider, { callbackUrl: '/dashboard' })
     } catch (error) {
-      toast.error(`Failed to sign up with ${provider}`)
+      toast.error(`Failed to sign in with ${provider}`)
       setLoading(false)
     }
-  }
-
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    )
   }
 
   return (
@@ -146,11 +180,84 @@ export default function RegisterPage() {
         <CardHeader>
           <CardTitle>Create Account</CardTitle>
           <CardDescription>
-            Sign up to get started with our platform
+            Sign up to get started with your account
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form onSubmit={handleEmailRegister} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value: 'TENANT' | 'MANAGER') => handleInputChange('role', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TENANT">Tenant</SelectItem>
+                  <SelectItem value="MANAGER">Manager</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="profileImage">Profile Picture (Optional)</Label>
+              {imagePreview ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center">
+                    <img
+                      src={imagePreview}
+                      alt="Profile preview"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={removeImage}
+                    >
+                      Remove Image
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    Image will be uploaded when you create your account
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                  onDrop={handleImageDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={(e) => e.preventDefault()}
+                  onClick={() => document.getElementById('imageInput')?.click()}
+                >
+                  <div className="space-y-2">
+                    <div className="text-gray-500">
+                      <svg className="mx-auto h-12 w-12" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      PNG, JPG, GIF up to 10MB
+                    </div>
+                  </div>
+                  <input
+                    id="imageInput"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -188,31 +295,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tenant">Tenant</SelectItem>
-                  <SelectItem value="manager">Property Manager</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Profile Image Upload */}
-            <ProfileImageUpload
-              onImageUploaded={setProfileImage}
-              existingImage={profileImage}
-              userName={formData.name}
-            />
-
-            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a password"
+                placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
                 required
@@ -232,7 +319,7 @@ export default function RegisterPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
           </form>
 
@@ -245,56 +332,30 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-4">
             <Button
-              type="button"
               variant="outline"
-              className="w-full"
-              onClick={() => handleOAuthRegister('google')}
+              onClick={() => handleOAuthSignIn('google')}
               disabled={loading}
+              className="w-full"
             >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-              Sign up with Google
+              <FontAwesomeIcon icon={faGoogle} className="mr-2 h-4 w-4" />
+              Google
             </Button>
-
             <Button
-              type="button"
               variant="outline"
-              className="w-full"
-              onClick={() => handleOAuthRegister('github')}
+              onClick={() => handleOAuthSignIn('github')}
               disabled={loading}
+              className="w-full"
             >
-              <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Sign up with GitHub
+              <FontAwesomeIcon icon={faGithub} className="mr-2 h-4 w-4" />
+              GitHub
             </Button>
           </div>
 
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Already have an account? </span>
-            <Link href="/auth/login" className="text-primary hover:underline">
+            <Link href="/auth/signin" className="text-primary hover:underline">
               Sign in
             </Link>
           </div>

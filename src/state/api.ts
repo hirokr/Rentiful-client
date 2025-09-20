@@ -1,4 +1,5 @@
 import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
+import { auth } from "@/auth";
 import {
   Application,
   Lease,
@@ -8,32 +9,36 @@ import {
   Tenant,
 } from "@/types/prismaTypes";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "./redux";
-import type { AuthUser } from "@/lib/auth";
 
 import { FiltersState } from ".";
 
-// Define the User type for the getAuthUser query
-interface User {
-  cognitoInfo: {
-    userId: string;
-    username: string;
-    email: string;
-    role: string;
+const fetchAuthSession = async () => {
+  const session = await auth();
+  return {
+    tokens: {
+      idToken: session?.user?.id || null,
+    },
   };
-  userInfo: Tenant | Manager;
-  userRole: string;
-}
+};
+
+const getCurrentUser = async () => {
+  const session = await auth();
+  return session?.user
+    ? {
+      userId: session.user.id,
+      role: session.user.role,
+      email: session.user.email,
+    }
+    : null;
+};
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001",
-    prepareHeaders: (headers, { getState }) => {
-      const state = getState() as RootState;
-      const token = state.auth.token;
-
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
+    prepareHeaders: async (headers) => {
+      const session = await auth();
+      if (session?.user?.id) {
+        headers.set("Authorization", `Bearer ${session.user.id}`);
       }
       return headers;
     },
@@ -50,16 +55,15 @@ export const api = createApi({
   ],
   endpoints: (build) => ({
     getAuthUser: build.query<User, void>({
-      queryFn: async (_, { getState }, _extraoptions, fetchWithBQ): Promise<{ data: User } | { error: string }> => {
+      queryFn: async (_, _queryApi, _extraoptions, fetchWithBQ) => {
         try {
-          const state = getState() as RootState;
-          const user = state.auth.user;
+          const user = await getCurrentUser();
 
           if (!user) {
             return { error: "No authenticated user found" };
           }
 
-          const userRole = user.role.toLowerCase();
+          const userRole = user.role as string;
 
           const endpoint =
             userRole === "manager" ? `/managers/me` : `/tenants/me`;
@@ -72,11 +76,7 @@ export const api = createApi({
             userDetailsResponse.error.status === 404
           ) {
             userDetailsResponse = await createNewUserInDatabase(
-              {
-                userId: user.userId,
-                role: user.role.toLowerCase(),
-                email: user.email,
-              },
+              user,
               null,
               userRole,
               fetchWithBQ
@@ -87,9 +87,9 @@ export const api = createApi({
             data: {
               cognitoInfo: {
                 userId: user.userId,
-                username: user.email,
-                email: user.email,
-                role: user.role.toLowerCase(),
+                username: user.email, // use email as username since it's not provided by auth service
+                email: user.email, // flatten email property
+                role: user.role,
               },
               userInfo: userDetailsResponse.data as Tenant | Manager,
               userRole,

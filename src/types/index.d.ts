@@ -2,12 +2,6 @@ import { LucideIcon } from "lucide-react";
 import { Manager, Tenant, Property, Application } from "./prismaTypes";
 import { MotionProps as OriginalMotionProps } from "framer-motion";
 
-interface AuthUser {
-  userId: string;
-  username: string;
-  email: string;
-  role: string;
-}
 
 declare module "framer-motion" {
   interface MotionProps extends OriginalMotionProps {
@@ -137,10 +131,26 @@ declare global {
   }
 
   interface User {
-    cognitoInfo: AuthUser;
     userInfo: Tenant | Manager;
     userRole: JsonObject | JsonPrimitive | JsonArray;
   }
+
+  interface AuthUser {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: 'TENANT' | 'MANAGER';
+  }
+
+  interface RegisterFormData {
+    name: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    phoneNumber: string;
+    role: 'TENANT' | 'MANAGER';
+  }
 }
 
-export {};
+export { };

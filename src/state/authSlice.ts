@@ -1,9 +1,31 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authService, AuthUser, LoginCredentials, RegisterCredentials } from '@/lib/auth';
+import { signIn, signOut } from 'next-auth/react';
+
+interface AuthUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: 'TENANT' | 'MANAGER';
+}
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+  role: 'TENANT' | 'MANAGER';
+}
+
+interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  role: 'TENANT' | 'MANAGER';
+  imageUrl?: string;
+}
 
 interface AuthState {
   user: AuthUser | null;
-  token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -11,7 +33,6 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  token: null,
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -22,8 +43,18 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const result = await authService.login(credentials);
-      return result;
+      const result = await signIn('credentials', {
+        email: credentials.email,
+        password: credentials.password,
+        role: credentials.role,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error('Invalid credentials');
+      }
+
+      return { success: true };
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -34,26 +65,30 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (credentials: RegisterCredentials, { rejectWithValue }) => {
     try {
-      const result = await authService.register(credentials);
-      return result;
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  }
-);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/manual_register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
 
-export const validateToken = createAsyncThunk(
-  'auth/validateToken',
-  async (_, { rejectWithValue }) => {
-    try {
-      const isValid = await authService.validateToken();
-      if (!isValid) {
-        throw new Error('Token is invalid');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
-      return {
-        user: authService.getUser(),
-        token: authService.getToken(),
-      };
+
+      // Auto sign in after registration
+      const signInResult = await signIn('credentials', {
+        email: credentials.email,
+        password: credentials.password,
+        role: credentials.role,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        throw new Error('Registration successful, but sign in failed');
+      }
+
+      return { success: true };
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -63,7 +98,7 @@ export const validateToken = createAsyncThunk(
 export const logoutUser = createAsyncThunk(
   'auth/logout',
   async () => {
-    await authService.logout();
+    await signOut({ callbackUrl: '/auth/signin' });
   }
 );
 
@@ -74,22 +109,9 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    initializeAuth: (state) => {
-      const user = authService.getUser();
-      const token = authService.getToken();
-      if (user && token) {
-        state.user = user;
-        state.token = token;
-        state.isAuthenticated = true;
-      }
-    },
-    setAuthData: (state, action: PayloadAction<{ user: AuthUser; token: string }>) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.isAuthenticated = true;
-      state.error = null;
-      // Store in localStorage via authService
-      authService.setAuthData(action.payload.user, action.payload.token);
+    setUser: (state, action: PayloadAction<AuthUser | null>) => {
+      state.user = action.payload;
+      state.isAuthenticated = !!action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -99,62 +121,35 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action) => {
+      .addCase(loginUser.fulfilled, (state) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-        state.isAuthenticated = false;
       })
       // Register
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
+      .addCase(registerUser.fulfilled, (state) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-        state.isAuthenticated = false;
-      })
-      // Validate token
-      .addCase(validateToken.pending, (state) => {
-        state.loading = true;
-      })
-      .addCase(validateToken.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.user && action.payload.token) {
-          state.user = action.payload.user;
-          state.token = action.payload.token;
-          state.isAuthenticated = true;
-        }
-      })
-      .addCase(validateToken.rejected, (state) => {
-        state.loading = false;
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
       })
       // Logout
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
-        state.token = null;
         state.isAuthenticated = false;
         state.error = null;
       });
   },
 });
 
-export const { clearError, initializeAuth, setAuthData } = authSlice.actions;
+export const { clearError, setUser } = authSlice.actions;
 export default authSlice.reducer;
