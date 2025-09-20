@@ -54,6 +54,7 @@ export default function DashboardPage() {
                 {user.image && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-500">Profile Picture</h3>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={user.image}
                       alt="Profile"

@@ -2,6 +2,7 @@ import React from "react";
 import {
   ControllerRenderProps,
   FieldValues,
+  Control,
   useFormContext,
   useFieldArray,
 } from "react-hook-form";
@@ -38,25 +39,23 @@ interface FormFieldProps {
   name: string;
   label: string;
   type?:
-    | "text"
-    | "email"
-    | "textarea"
-    | "number"
-    | "select"
-    | "switch"
-    | "password"
-    | "file"
-    | "multi-input"
-    | "multiSelect";
+  | "text"
+  | "email"
+  | "textarea"
+  | "number"
+  | "select"
+  | "switch"
+  | "password"
+  | "file"
+  | "multi-input"
+  | "multiSelect";
   placeholder?: string;
   options?: { value: string; label: string }[];
-  accept?: string;
   className?: string;
   labelClassName?: string;
   inputClassName?: string;
   value?: string;
   disabled?: boolean;
-  multiple?: boolean;
   isIcon?: boolean;
   initialValue?: string | number | boolean | string[];
 }
@@ -67,12 +66,10 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
   type = "text",
   placeholder,
   options,
-  accept,
   className,
   inputClassName,
   labelClassName,
   disabled = false,
-  multiple = false,
   isIcon = false,
   initialValue,
 }) => {
@@ -103,12 +100,12 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
                 className={`w-full justify-between border-gray-200 p-4 ${inputClassName}`}
               >
                 {field.value &&
-                Array.isArray(field.value) &&
-                field.value.length > 0
+                  Array.isArray(field.value) &&
+                  field.value.length > 0
                   ? options
-                      ?.filter((opt) => field.value.includes(opt.value))
-                      .map((opt) => opt.label)
-                      .join(", ")
+                    ?.filter((opt) => field.value.includes(opt.value))
+                    .map((opt) => opt.label)
+                    .join(", ")
                   : placeholder || "Select options"}
               </Button>
             </PopoverTrigger>
@@ -124,16 +121,15 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
                   <div
                     key={option.value}
                     className={`cursor-pointer rounded-md px-3 py-2 text-sm flex items-center justify-between 
-                ${
-                  isSelected
-                    ? "bg-gray-100 text-customgreys-darkGrey"
-                    : "hover:bg-gray-50"
-                }`}
+                ${isSelected
+                        ? "bg-gray-100 text-customgreys-darkGrey"
+                        : "hover:bg-gray-50"
+                      }`}
                     onClick={() => {
                       let newValue: string[] = Array.isArray(field.value)
                         ? [...field.value]
                         : [];
-                        
+
                       if (isSelected) {
                         newValue = newValue.filter(
                           (val) => val !== option.value
@@ -248,9 +244,8 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
       defaultValue={type === "multiSelect" ? [] : initialValue}
       render={({ field }) => (
         <FormItem
-          className={`${
-            type !== "switch" && "rounded-md"
-          } relative ${className}`}
+          className={`${type !== "switch" && "rounded-md"
+            } relative ${className}`}
         >
           {type !== "switch" && (
             <div className='flex justify-between items-center'>
@@ -276,8 +271,8 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
                     ? field.value
                     : []
                   : field.value !== undefined
-                  ? field.value
-                  : initialValue,
+                    ? field.value
+                    : initialValue,
             })}
           </FormControl>
           <FormMessage className='text-red-400' />
@@ -289,10 +284,9 @@ export const CustomFormField: React.FC<FormFieldProps> = ({
 
 interface MultiInputFieldProps {
   name: string;
-  control: any;
+  control: Control<FieldValues>;
   placeholder?: string;
   inputClassName?: string;
-  options?: string;
 }
 
 const MultiInputField: React.FC<MultiInputFieldProps> = ({
@@ -300,7 +294,6 @@ const MultiInputField: React.FC<MultiInputFieldProps> = ({
   control,
   placeholder,
   inputClassName,
-  options,
 }) => {
   const { fields, append, remove } = useFieldArray({
     control,

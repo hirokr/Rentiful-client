@@ -232,10 +232,10 @@ const Residence = () => {
     data: property,
     isLoading: propertyLoading,
     error: propertyError,
-  } = useGetPropertyQuery(Number(id));
+  } = useGetPropertyQuery(id as string);
 
   const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(
-    parseInt(session?.user?.id || "0"),
+    undefined,
     { skip: !session?.user?.id }
   );
   const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery(

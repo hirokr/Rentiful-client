@@ -30,13 +30,13 @@ const FiltersFull = () => {
   );
 
   const updateURL = debounce((newFilters: FiltersState) => {
-    const cleanFilters = cleanParams(newFilters);
+    const cleanFilters = cleanParams(newFilters as unknown as Record<string, unknown>);
     const updatedSearchParams = new URLSearchParams();
 
     Object.entries(cleanFilters).forEach(([key, value]) => {
       updatedSearchParams.set(
         key,
-        Array.isArray(value) ? value.join(",") : value.toString()
+        Array.isArray(value) ? value.join(",") : String(value)
       );
     });
 
@@ -68,8 +68,7 @@ const FiltersFull = () => {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           localFilters.location
-        )}.json?access_token=${
-          process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+        )}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
         }&fuzzyMatch=true`
       );
       const data = await response.json();
@@ -152,10 +151,10 @@ const FiltersFull = () => {
               localFilters.priceRange[0] ?? 0,
               localFilters.priceRange[1] ?? 10000,
             ]}
-            onValueChange={(value: any) =>
+            onValueChange={(value: [number, number]) =>
               setLocalFilters((prev) => ({
                 ...prev,
-                priceRange: value as [number, number],
+                priceRange: value,
               }))
             }
           />

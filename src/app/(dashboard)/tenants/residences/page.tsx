@@ -13,7 +13,7 @@ import React from "react";
 const Residences = () => {
   const { data: session } = useSession();
   const { data: tenant } = useGetTenantQuery(
-    session?.user?.id || "",
+    undefined,
     {
       skip: !session?.user?.id,
     }
@@ -23,7 +23,7 @@ const Residences = () => {
     data: currentResidences,
     isLoading,
     error,
-  } = useGetCurrentResidencesQuery(session?.user?.id || "", {
+  } = useGetCurrentResidencesQuery(undefined, {
     skip: !session?.user?.id,
   });
 

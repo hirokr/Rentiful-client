@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAppDispatch } from '@/state/redux'
 import { setUser } from '@/state/authSlice'
 import { toast } from 'sonner'
 
-export default function AuthSuccessPage() {
+function AuthSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const dispatch = useAppDispatch()
@@ -20,7 +20,7 @@ export default function AuthSuccessPage() {
         const payload = JSON.parse(atob(token.split('.')[1]))
 
         const userData = {
-          userId: payload.sub,
+          id: payload.sub,
           email: payload.email,
           role: payload.role,
           name: payload.name,
@@ -57,5 +57,20 @@ export default function AuthSuccessPage() {
         <p className="mt-4 text-gray-600">Completing authentication...</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthSuccessContent />
+    </Suspense>
   )
 }

@@ -22,7 +22,7 @@ const ApplicationModal = ({
   const [createApplication] = useCreateApplicationMutation();
   const { data: session } = useSession();
   const { data: tenant } = useGetTenantQuery(
-    session?.user?.id || "",
+    undefined,
     { skip: !session?.user?.id }
   );
 

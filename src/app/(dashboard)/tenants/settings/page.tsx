@@ -11,7 +11,7 @@ import React from "react";
 const TenantSettings = () => {
   const { data: session } = useSession();
   const { data: tenant, isLoading } = useGetTenantQuery(
-    session?.user?.id || "",
+    undefined,
     { skip: !session?.user?.id }
   );
   const [updateTenant] = useUpdateTenantSettingsMutation();

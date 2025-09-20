@@ -8,16 +8,20 @@ import { useCreatePropertyMutation } from "@/state/api";
 import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { PropertyImageUpload, StagedImage } from "@/components/PropertyImageUpload";
+import { toast } from "sonner";
 
 const NewProperty = () => {
   const [createProperty] = useCreatePropertyMutation();
   const { data: session } = useSession();
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const form = useForm<PropertyFormData>({
-    // resolver: zodResolver(propertySchema),
+    resolver: zodResolver(propertySchema),
     defaultValues: {
       name: "",
       description: "",
@@ -42,27 +46,89 @@ const NewProperty = () => {
 
   const onSubmit = async (data: PropertyFormData) => {
     if (!session?.user?.id) {
-      throw new Error("No manager ID found");
+      toast.error("No manager ID found");
+      return;
     }
 
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (key === "photoUrls") {
-        const files = value as File[];
-        files.forEach((file: File) => {
-          formData.append("photos", file);
-        });
-      }
-      // else if (key === "amenities" || key === "highlights ")
-      //   formData.append(key, value);
-      else if (Array.isArray(value)) {
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, String(value));
-      }
-    });
+    if (stagedImages.length === 0) {
+      toast.error("Please add at least one image");
+      return;
+    }
 
-    await createProperty(formData);
+    setIsCreating(true);
+
+    try {
+      // Check if there are any unuploaded images and upload them first
+      const unuploadedImages = stagedImages.filter(img => !img.uploaded);
+      let finalImageUrls: string[] = [];
+
+      if (unuploadedImages.length > 0) {
+        // Upload remaining images automatically
+        const uploadedUrls = await uploadStagedImages();
+        if (!uploadedUrls) {
+          throw new Error("Failed to upload images");
+        }
+
+        // Combine already uploaded URLs with newly uploaded ones
+        const alreadyUploadedUrls = stagedImages
+          .filter(img => img.uploaded && img.url)
+          .map(img => img.url!);
+
+        finalImageUrls = [...alreadyUploadedUrls, ...uploadedUrls];
+      } else {
+        // All images are already uploaded
+        finalImageUrls = stagedImages
+          .filter(img => img.uploaded && img.url)
+          .map(img => img.url!);
+      }
+
+      // Update form data with uploaded URLs
+      const propertyData = {
+        ...data,
+        photoUrls: finalImageUrls,
+      };
+
+      const formData = new FormData();
+      Object.entries(propertyData).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, String(value));
+        }
+      });
+
+      await createProperty(formData).unwrap();
+      toast.success("Property created successfully!");
+
+      // Reset form and images
+      form.reset();
+      setStagedImages([]);
+
+    } catch (error) {
+      console.error("Error creating property:", error);
+      toast.error("Failed to create property. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Function to upload staged images and return URLs
+  const uploadStagedImages = (): Promise<string[] | null> => {
+    return new Promise((resolve) => {
+      const unuploadedImages = stagedImages.filter(img => !img.uploaded);
+      if (unuploadedImages.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      // Trigger upload from the PropertyImageUpload component
+      const uploadEvent = new CustomEvent('uploadStagedImages', {
+        detail: {
+          callback: (urls: string[] | null) => resolve(urls)
+        }
+      });
+      window.dispatchEvent(uploadEvent);
+    });
   };
 
   return (
@@ -195,11 +261,9 @@ const NewProperty = () => {
             {/* Photos */}
             <div>
               <h2 className='text-lg font-semibold mb-4'>Photos</h2>
-              <CustomFormField
-                name='photoUrls'
-                label='Property Photos'
-                type='file'
-                accept='image/*'
+              <PropertyImageUpload
+                onImagesChange={setStagedImages}
+                maxImages={10}
               />
             </div>
 
@@ -229,9 +293,10 @@ const NewProperty = () => {
 
             <Button
               type='submit'
+              disabled={isCreating}
               className='bg-primary-700 text-white w-full mt-8'
             >
-              Create Property
+              {isCreating ? "Creating Property..." : "Create Property"}
             </Button>
           </form>
         </Form>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -21,6 +22,7 @@ export default function RoleSelectionPage() {
   const [loading, setLoading] = useState(false)
   const [pendingUser, setPendingUser] = useState<PendingOAuthUser | null>(null)
   const router = useRouter()
+  const { update } = useSession()
 
   useEffect(() => {
     const storedUser = sessionStorage.getItem('pendingOAuthUser')
@@ -56,7 +58,6 @@ export default function RoleSelectionPage() {
         sessionStorage.removeItem('pendingOAuthUser')
 
         // Update session with role
-        const { update } = await import('next-auth/react')
         await update({ role })
 
         toast.success('Account created successfully!')
@@ -64,7 +65,7 @@ export default function RoleSelectionPage() {
       } else {
         toast.error('Failed to create account')
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred')
     } finally {
       setLoading(false)

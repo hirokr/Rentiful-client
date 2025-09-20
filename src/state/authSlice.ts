@@ -55,8 +55,8 @@ export const loginUser = createAsyncThunk(
       }
 
       return { success: true };
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error: unknown) {
+      return rejectWithValue((error as Error).message);
     }
   }
 );
@@ -89,8 +89,8 @@ export const registerUser = createAsyncThunk(
       }
 
       return { success: true };
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+    } catch (error: unknown) {
+      return rejectWithValue((error as Error).message);
     }
   }
 );

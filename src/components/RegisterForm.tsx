@@ -56,8 +56,8 @@ const RegisterForm = () => {
       } else {
         router.push('/dashboard');
       }
-    } catch (error: any) {
-      setError(error.message || "Registration failed");
+    } catch (error: unknown) {
+      setError((error as Error).message || "Registration failed");
     } finally {
       setIsLoading(false);
     }

@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import ImagePreviews from "./ImagePreviews";
 import PropertyOverview from "./PropertyOverview";
 import PropertyDetails from "./PropertyDetails";
-import PropertyLocation from "./PropertyLocation";
+// import PropertyLocation from "./PropertyLocation";
 import ContactWidget from "./ContactWidget";
 import ApplicationModal from "./ApplicationModal";
 

@@ -20,14 +20,11 @@ export function formatPriceValue(value: number | null, isMin: boolean) {
   return isMin ? `$${value}+` : `<$${value}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function cleanParams(params: Record<string, any>): Record<string, any> {
+export function cleanParams(params: Record<string, unknown>): Record<string, unknown> {
   console.log(params);
   return Object.fromEntries(
     Object.entries(params).filter(
-      (
-        [_, value] // eslint-disable-line @typescript-eslint/no-unused-vars
-      ) =>
+      ([, value]) =>
         value !== undefined &&
         !Number.isNaN(value) &&
         value !== "any" &&
@@ -59,18 +56,18 @@ export const withToast = async <T>(
 };
 
 export const createNewUserInDatabase = async (
-  user: any,
-  idToken: any,
-  userRole: string,
-  fetchWithBQ: any
+  user: unknown,
+  _idToken: unknown,
+  _userRole: string,
+  _fetchWithBQ: unknown
 ) => {
   // For now, return a mock response since user creation should be handled by auth service
   // In a real implementation, this would call the auth/register endpoint
   return {
     data: {
-      id: user.userId,
-      name: user.username,
-      email: user.attributes?.email || "",
+      id: (user as { userId: string }).userId,
+      name: (user as { username: string }).username,
+      email: (user as { attributes?: { email?: string } }).attributes?.email || "",
       phoneNumber: "",
     },
   };

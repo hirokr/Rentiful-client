@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface UploadDropzoneProps {
   endpoint: "profileImage";
-  onClientUploadComplete?: (res: any) => void;
+  onClientUploadComplete?: (res: unknown) => void;
   onUploadError?: (error: Error) => void;
   className?: string;
 }

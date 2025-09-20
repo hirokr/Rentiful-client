@@ -1,8 +1,7 @@
 "use client";
 import Navbar from "@/components/Navbar";
 import { NAVBAR_HEIGHT } from "@/lib/constants";
-import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const layout = ({ children }: { children: React.ReactNode }) => {
   // const { data: authUser, isLoading: authLoading } = useGetAuthUserQuery();

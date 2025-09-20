@@ -37,8 +37,8 @@ const LoginForm = () => {
       } else {
         router.push('/dashboard');
       }
-    } catch (error: any) {
-      setError(error.message || "Login failed");
+    } catch (error: unknown) {
+      setError((error as Error).message || "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +120,7 @@ const LoginForm = () => {
           </div>
           <div className='text-center'>
             <p className='text-sm text-gray-600'>
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <button
                 type='button'
                 onClick={() => router.push("/auth/register")}

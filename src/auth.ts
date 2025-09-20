@@ -6,7 +6,7 @@ import Credentials from "next-auth/providers/credentials";
 declare module "next-auth" {
   interface User {
     role?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   interface Session {
@@ -16,7 +16,7 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     } & DefaultSession["user"];
   }
 }
@@ -29,7 +29,7 @@ declare module "@auth/core/jwt" {
       email?: string | null;
       image?: string | null;
       role?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   }
 }

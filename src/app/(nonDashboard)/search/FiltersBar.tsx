@@ -34,13 +34,13 @@ const FiltersBar = () => {
   const [searchInput, setSearchInput] = useState(filters.location);
 
   const updateURL = debounce((newFilters: FiltersState) => {
-    const cleanFilters = cleanParams(newFilters);
+    const cleanFilters = cleanParams(newFilters as unknown as Record<string, unknown>);
     const updatedSearchParams = new URLSearchParams();
 
     Object.entries(cleanFilters).forEach(([key, value]) => {
       updatedSearchParams.set(
         key,
-        Array.isArray(value) ? value.join(",") : value.toString()
+        Array.isArray(value) ? value.join(",") : String(value)
       );
     });
 
@@ -49,10 +49,10 @@ const FiltersBar = () => {
 
   const handleFilterChange = (
     key: string,
-    value: any,
+    value: string | number | boolean | number[],
     isMin: boolean | null
   ) => {
-    let newValue = value;
+    let newValue: string | number | boolean | number[] | (number | null)[] = value;
 
     if (key === "priceRange" || key === "squareFeet") {
       const currentArrayRange = [...filters[key]];
@@ -62,7 +62,7 @@ const FiltersBar = () => {
       }
       newValue = currentArrayRange;
     } else if (key === "coordinates") {
-      newValue = value === "any" ? [0, 0] : value.map(Number);
+      newValue = value === "any" ? [0, 0] : Array.isArray(value) ? value.map(Number) : [0, 0];
     } else {
       newValue = value === "any" ? "any" : value;
     }
@@ -77,8 +77,7 @@ const FiltersBar = () => {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
           searchInput
-        )}.json?access_token=${
-          process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+        )}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
         }&fuzzyMatch=true`
       );
       const data = await response.json();

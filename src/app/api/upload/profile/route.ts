@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const filePath = join(uploadDir, filename)
 
     // Create directory if it doesn't exist
-    const fs = require('fs')
+    const fs = await import('fs')
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true })
     }

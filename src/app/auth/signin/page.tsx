@@ -20,7 +20,7 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = searchParams.get('callbackUrl') || '/landing'
 
   useEffect(() => {
     const checkSession = async () => {
@@ -49,7 +49,7 @@ export default function SignInPage() {
         toast.success('Signed in successfully!')
         router.push(callbackUrl)
       }
-    } catch (error) {
+    } catch {
       toast.error('An error occurred during sign in')
     } finally {
       setLoading(false)
@@ -60,7 +60,7 @@ export default function SignInPage() {
     setLoading(true)
     try {
       await signIn(provider, { callbackUrl })
-    } catch (error) {
+    } catch {
       toast.error(`Failed to sign in with ${provider}`)
       setLoading(false)
     }
@@ -135,7 +135,7 @@ export default function SignInPage() {
           </div>
 
           <div className="text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
+            <span className="text-muted-foreground">Don&apos;t have an account? </span>
             <Link href="/auth/register" className="text-primary hover:underline">
               Sign up
             </Link>

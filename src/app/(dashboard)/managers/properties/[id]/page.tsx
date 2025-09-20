@@ -4,8 +4,8 @@ import Header from "@/components/Header";
 import Loading from "@/components/Loading";
 import {
   Table,
-  TableBody,
-  TableCell,
+  // TableBody,
+  // TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -15,8 +15,8 @@ import {
   // useGetPropertyLeasesQuery,
   useGetPropertyQuery,
 } from "@/state/api";
-import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
-import Image from "next/image";
+import { ArrowLeft, Download } from "lucide-react";
+// import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import React from "react";
@@ -29,21 +29,21 @@ const PropertyTenants = () => {
     useGetPropertyQuery(propertyId);
   // const { data: leases, isLoading: leasesLoading } =
   //   useGetPropertyLeasesQuery(propertyId);
-  const { data: payments, isLoading: paymentsLoading } =
+  const { data: _payments, isLoading: paymentsLoading } =
     useGetPaymentsQuery(propertyId);
 
   if (propertyLoading || paymentsLoading) return <Loading />;
 
-  const getCurrentMonthPaymentStatus = (leaseId: number) => {
-    const currentDate = new Date();
-    const currentMonthPayment = payments?.find(
-      (payment) =>
-        payment.leaseId === leaseId &&
-        new Date(payment.dueDate).getMonth() === currentDate.getMonth() &&
-        new Date(payment.dueDate).getFullYear() === currentDate.getFullYear()
-    );
-    return currentMonthPayment?.paymentStatus || "Not Paid";
-  };
+  // const getCurrentMonthPaymentStatus = (leaseId: number) => {
+  //   const currentDate = new Date();
+  //   const currentMonthPayment = payments?.find(
+  //     (payment) =>
+  //       payment.leaseId === leaseId &&
+  //       new Date(payment.dueDate).getMonth() === currentDate.getMonth() &&
+  //       new Date(payment.dueDate).getFullYear() === currentDate.getFullYear()
+  //   );
+  //   return currentMonthPayment?.paymentStatus || "Not Paid";
+  // };
 
   return (
     <div className="dashboard-container">

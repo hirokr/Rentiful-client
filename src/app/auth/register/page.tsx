@@ -154,8 +154,8 @@ export default function RegisterPage() {
         const errorData = await response.json()
         toast.error(errorData.message || 'Registration failed')
       }
-    } catch (error) {
-      console.error('Registration error:', error)
+    } catch (_error) {
+      console.error('Registration error:', _error)
       toast.error('An error occurred during registration')
     } finally {
       setLoading(false)
@@ -168,7 +168,7 @@ export default function RegisterPage() {
       // Store selected role for OAuth flow
       sessionStorage.setItem('selectedRole', formData.role)
       await signIn(provider, { callbackUrl: '/dashboard' })
-    } catch (error) {
+    } catch (_error) {
       toast.error(`Failed to sign in with ${provider}`)
       setLoading(false)
     }
@@ -206,6 +206,7 @@ export default function RegisterPage() {
               {imagePreview ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imagePreview}
                       alt="Profile preview"

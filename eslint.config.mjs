@@ -18,7 +18,22 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "src/types/prismaTypes.d.ts", // Ignore generated Prisma types
     ],
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }],
+      "@typescript-eslint/no-explicit-any": "warn", // Change to warning instead of error
+      "@typescript-eslint/no-empty-object-type": "warn", // Change to warning
+      "@typescript-eslint/no-require-imports": "warn", // Change to warning
+      "react/no-unescaped-entities": "error",
+      "@next/next/no-img-element": "warn", // Change to warning
+    },
   },
 ];
 

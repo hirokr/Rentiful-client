@@ -10,7 +10,7 @@ export const propertySchema = z.object({
   isPetsAllowed: z.boolean(),
   isParkingIncluded: z.boolean(),
   photoUrls: z
-    .array(z.instanceof(File))
+    .array(z.string().url())
     .min(1, "At least one photo is required"),
   amenities: z
     .array(z.any())
