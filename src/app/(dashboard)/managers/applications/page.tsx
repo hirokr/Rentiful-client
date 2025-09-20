@@ -6,15 +6,15 @@ import Loading from "@/components/Loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useGetApplicationsQuery,
-  useGetAuthUserQuery,
   useUpdateApplicationStatusMutation,
 } from "@/state/api";
+import { useSession } from "next-auth/react";
 import { CircleCheckBig, Download, File, Hospital } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 
 const Applications = () => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("all");
 
   const {
@@ -22,11 +22,11 @@ const Applications = () => {
     isLoading,
     isError,
   } = useGetApplicationsQuery(undefined, {
-    skip: !authUser?.cognitoInfo?.userId,
+    skip: !session?.user?.id,
   });
   const [updateApplicationStatus] = useUpdateApplicationStatusMutation();
 
-  const handleStatusChange = async (id: number, status: string) => {
+  const handleStatusChange = async (id: string, status: string) => {
     await updateApplicationStatus({ id, status });
   };
 
@@ -72,10 +72,10 @@ const Applications = () => {
                     {/* Colored Section Status */}
                     <div
                       className={`p-4 text-green-700 grow ${application.status === "Approved"
-                          ? "bg-green-100"
-                          : application.status === "Denied"
-                            ? "bg-red-100"
-                            : "bg-yellow-100"
+                        ? "bg-green-100"
+                        : application.status === "Denied"
+                          ? "bg-red-100"
+                          : "bg-yellow-100"
                         }`}
                     >
                       <div className="flex flex-wrap items-center">
@@ -90,10 +90,10 @@ const Applications = () => {
                         <CircleCheckBig className="w-5 h-5 mr-2 flex-shrink-0" />
                         <span
                           className={`font-semibold ${application.status === "Approved"
-                              ? "text-green-800"
-                              : application.status === "Denied"
-                                ? "text-red-800"
-                                : "text-yellow-800"
+                            ? "text-green-800"
+                            : application.status === "Denied"
+                              ? "text-red-800"
+                              : "text-yellow-800"
                             }`}
                         >
                           {application.status === "Approved" &&

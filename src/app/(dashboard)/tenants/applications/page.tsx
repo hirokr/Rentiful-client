@@ -3,19 +3,19 @@
 import ApplicationCard from "@/components/ApplicationCard";
 import Header from "@/components/Header";
 import Loading from "@/components/Loading";
-import { useGetApplicationsQuery, useGetAuthUserQuery } from "@/state/api";
+import { useGetApplicationsQuery } from "@/state/api";
+import { useSession } from "next-auth/react";
 import { CircleCheckBig, Clock, Download, XCircle } from "lucide-react";
 import React from "react";
 
 const Applications = () => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const {
     data: applications,
     isLoading,
     isError,
-  } = useGetApplicationsQuery({
-    userId: authUser?.cognitoInfo?.userId,
-    userType: "tenant",
+  } = useGetApplicationsQuery(undefined, {
+    skip: !session?.user?.id,
   });
 
   if (isLoading) return <Loading />;

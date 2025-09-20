@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 import { Button } from "./ui/button";
-import { useGetAuthUserQuery } from "@/state/api";
 import { useOptionalAuth } from "@/hooks/useAuth";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -23,7 +22,6 @@ import { SidebarTrigger } from "./ui/sidebar";
 
 
 const Navbar = () => {
-  const { data: authUser } = useGetAuthUserQuery();
   const { user } = useOptionalAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -68,19 +66,19 @@ const Navbar = () => {
               </div>
             </div>
           </Link>
-          {isDashboardPage && authUser && (
+          {isDashboardPage && user && (
             <Button
               variant="secondary"
               className="md:ml-4 bg-primary-50 text-primary-700 hover:bg-secondary-500 hover:text-primary-50"
               onClick={() =>
                 router.push(
-                  authUser.userRole?.toLowerCase() === "manager"
+                  user.role?.toLowerCase() === "manager"
                     ? "/managers/newproperty"
                     : "/search"
                 )
               }
             >
-              {authUser.userRole?.toLowerCase() === "manager" ? (
+              {user.role?.toLowerCase() === "manager" ? (
                 <>
                   <Plus className="h-4 w-4" />
                   <span className="hidden md:block ml-2">Add New Property</span>

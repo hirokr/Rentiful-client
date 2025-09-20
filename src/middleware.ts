@@ -6,6 +6,11 @@ export async function middleware(request: NextRequest) {
   const session = await auth()
   const { pathname } = request.nextUrl
 
+  // Redirect root path to landing page regardless of session
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/landing', request.url))
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     '/',
@@ -42,14 +47,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
   ],
 }

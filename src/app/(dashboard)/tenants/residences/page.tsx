@@ -4,18 +4,18 @@ import Card from "@/components/Card";
 import Header from "@/components/Header";
 import Loading from "@/components/Loading";
 import {
-  useGetAuthUserQuery,
   useGetCurrentResidencesQuery,
   useGetTenantQuery,
 } from "@/state/api";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const Residences = () => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const { data: tenant } = useGetTenantQuery(
-    authUser?.cognitoInfo?.userId || "",
+    session?.user?.id || "",
     {
-      skip: !authUser?.cognitoInfo?.userId,
+      skip: !session?.user?.id,
     }
   );
 
@@ -23,8 +23,8 @@ const Residences = () => {
     data: currentResidences,
     isLoading,
     error,
-  } = useGetCurrentResidencesQuery(authUser?.cognitoInfo?.userId || "", {
-    skip: !authUser?.cognitoInfo?.userId,
+  } = useGetCurrentResidencesQuery(session?.user?.id || "", {
+    skip: !session?.user?.id,
   });
 
   if (isLoading) return <Loading />;
@@ -42,7 +42,7 @@ const Residences = () => {
             key={property.id}
             property={property}
             isFavorite={tenant?.favorites.includes(property.id) || false}
-            onFavoriteToggle={() => {}}
+            onFavoriteToggle={() => { }}
             showFavoriteButton={false}
             propertyLink={`/tenants/residences/${property.id}`}
           />

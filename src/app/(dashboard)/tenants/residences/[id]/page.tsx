@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  useGetAuthUserQuery,
   useGetLeasesQuery,
   useGetPaymentsQuery,
   useGetPropertyQuery,
@@ -28,6 +27,7 @@ import {
   User,
 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const PaymentMethod = () => {
@@ -195,11 +195,10 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${
-                      payment.paymentStatus === "Paid"
-                        ? "bg-green-100 text-green-800 border-green-300"
-                        : "bg-yellow-100 text-yellow-800 border-yellow-300"
-                    }`}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${payment.paymentStatus === "Paid"
+                      ? "bg-green-100 text-green-800 border-green-300"
+                      : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                      }`}
                   >
                     {payment.paymentStatus === "Paid" ? (
                       <Check className="w-4 h-4 inline-block mr-1" />
@@ -228,7 +227,7 @@ const BillingHistory = ({ payments }: { payments: Payment[] }) => {
 
 const Residence = () => {
   const { id } = useParams();
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const {
     data: property,
     isLoading: propertyLoading,
@@ -236,8 +235,8 @@ const Residence = () => {
   } = useGetPropertyQuery(Number(id));
 
   const { data: leases, isLoading: leasesLoading } = useGetLeasesQuery(
-    parseInt(authUser?.cognitoInfo?.userId || "0"),
-    { skip: !authUser?.cognitoInfo?.userId }
+    parseInt(session?.user?.id || "0"),
+    { skip: !session?.user?.id }
   );
   const { data: payments, isLoading: paymentsLoading } = useGetPaymentsQuery(
     leases?.[0]?.id || 0,

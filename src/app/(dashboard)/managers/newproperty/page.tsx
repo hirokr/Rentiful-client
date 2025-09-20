@@ -4,16 +4,17 @@ import { CustomFormField } from "@/components/FormField";
 import Header from "@/components/Header";
 import { Form } from "@/components/ui/form";
 import { PropertyFormData, propertySchema } from "@/lib/schemas";
-import { useCreatePropertyMutation, useGetAuthUserQuery } from "@/state/api";
+import { useCreatePropertyMutation } from "@/state/api";
 import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSession } from "next-auth/react";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 
 const NewProperty = () => {
   const [createProperty] = useCreatePropertyMutation();
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
 
   const form = useForm<PropertyFormData>({
     // resolver: zodResolver(propertySchema),
@@ -40,7 +41,7 @@ const NewProperty = () => {
   });
 
   const onSubmit = async (data: PropertyFormData) => {
-    if (!authUser?.cognitoInfo?.userId) {
+    if (!session?.user?.id) {
       throw new Error("No manager ID found");
     }
 

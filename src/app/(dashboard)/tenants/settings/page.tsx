@@ -2,21 +2,26 @@
 
 import SettingsForm from "@/components/SettingsForm";
 import {
-  useGetAuthUserQuery,
+  useGetTenantQuery,
   useUpdateTenantSettingsMutation,
 } from "@/state/api";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const TenantSettings = () => {
-  const { data: authUser, isLoading } = useGetAuthUserQuery();
+  const { data: session } = useSession();
+  const { data: tenant, isLoading } = useGetTenantQuery(
+    session?.user?.id || "",
+    { skip: !session?.user?.id }
+  );
   const [updateTenant] = useUpdateTenantSettingsMutation();
 
   if (isLoading) return <>Loading...</>;
 
   const initialData = {
-    name: authUser?.userInfo?.name || "name",
-    email: authUser?.userInfo?.email || "email",
-    phoneNumber: authUser?.userInfo?.phoneNumber || "phone number",
+    name: tenant?.name || "name",
+    email: tenant?.email || "email",
+    phoneNumber: tenant?.phoneNumber || "phone number",
   };
 
   const handleSubmit = async (data: typeof initialData) => {

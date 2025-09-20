@@ -80,28 +80,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     async signIn({ account, profile, user }) {
+      console.log("SignIn callback:", { account: account?.provider, profile: profile?.email, user: user?.email });
+
       // For OAuth providers, fetch user data from server
       if (account?.provider === "google" || account?.provider === "github") {
         try {
+          const requestBody = {
+            email: profile?.email,
+            name: profile?.name || profile?.login,
+            image: user?.image || profile?.picture || profile?.avatar_url,
+          };
+
+          console.log("Sending OAuth user data:", requestBody);
+
           // Check if user exists in our system or create/update
-          const res = await fetch(`${process.env.NEST_API_URL}/auth/oauth`, {
+          const res = await fetch(`${process.env.NEST_API_URL}/auth/oauth-user`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              provider: account.provider,
-              providerId: profile?.sub || profile?.id,
-              email: profile?.email,
-              name: profile?.name || profile?.login,
-              image: user?.image || profile?.picture,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
-          if (!res.ok) return false;
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("OAuth user creation failed:", errorText);
+            return false;
+          }
 
-          const data = await res.json();
+          const userData = await res.json();
+          console.log("OAuth user created/updated:", userData);
+
           // Store user data for JWT callback
-          user.id = data.user.id;
-          Object.assign(user, data.user);
+          user.id = userData.id;
+          user.role = userData.role;
+          Object.assign(user, userData);
         } catch (error) {
           console.error("OAuth signin error:", error);
           return false;
@@ -113,64 +124,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, account, user, trigger, session }) {
       // If new sign in (credentials or OAuth)
       if (account && user) {
-        // Fetch fresh user data from server
-        try {
-          const res = await fetch(`${process.env.NEST_API_URL}/auth/me`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${user.id}` // or use proper token
-            },
-          });
-
-          if (res.ok) {
-            const userData = await res.json();
-            token.user = {
-              id: user.id as string,
-              email: user.email,
-              ...userData, // All user data from server
-            };
-          } else {
-            // Fallback to user data from signin
-            token.user = {
-              id: user.id as string,
-              email: user.email,
-              ...user,
-            };
-          }
-        } catch (error) {
-          console.error("Failed to fetch user data:", error);
-          // Fallback to user data from signin
-          token.user = {
-            id: user.id as string,
-            email: user.email,
-            ...user,
-          };
-        }
+        token.user = {
+          id: user.id as string,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role,
+          ...user,
+        };
       }
 
       // Handle session updates
       if (trigger === "update" && session) {
-        // Fetch fresh data from server on session update
-        try {
-          const res = await fetch(`${process.env.NEST_API_URL}/auth/me`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token.user?.id}`
-            },
-          });
-
-          if (res.ok) {
-            const userData = await res.json();
-            token.user = {
-              ...token.user,
-              ...userData,
-            };
-          }
-        } catch (error) {
-          console.error("Failed to update user data:", error);
-        }
+        token.user = {
+          ...token.user,
+          ...session,
+        };
       }
 
       return token;

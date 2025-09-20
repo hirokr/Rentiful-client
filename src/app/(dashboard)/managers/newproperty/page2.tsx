@@ -4,9 +4,10 @@ import { CustomFormField } from "@/components/FormField";
 import Header from "@/components/Header";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { PropertyFormData, propertySchema } from "@/lib/schemas";
-import { useCreatePropertyMutation, useGetAuthUserQuery } from "@/state/api";
+import { useCreatePropertyMutation } from "@/state/api";
 import { AmenityEnum, HighlightEnum, PropertyTypeEnum } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSession } from "next-auth/react";
 import React from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const NewProperty = () => {
   const [createProperty] = useCreatePropertyMutation();
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -27,8 +28,8 @@ const NewProperty = () => {
       isPetsAllowed: true,
       isParkingIncluded: true,
       photoUrls: [],
-      amenities: [], 
-      highlights: [], 
+      amenities: [],
+      highlights: [],
       beds: 1,
       baths: 1,
       squareFeet: 1000,
@@ -41,14 +42,14 @@ const NewProperty = () => {
   });
 
   const onSubmit = async (data: PropertyFormData) => {
-    console.log("Form data before submission:", data); 
-    if (!authUser?.cognitoInfo?.userId) {
+    console.log("Form data before submission:", data);
+    if (!session?.user?.id) {
       throw new Error("No manager ID found");
     }
 
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      console.log(`${key}:`, value); 
+      console.log(`${key}:`, value);
       if (key === "photoUrls") {
         const files = value as File[];
         files.forEach((file: File) => {
@@ -57,12 +58,12 @@ const NewProperty = () => {
       } else if (Array.isArray(value)) {
         formData.append(key, JSON.stringify(value));
       } else {
-        console.log(`${key}:`, value); 
+        console.log(`${key}:`, value);
         formData.append(key, String(value));
       }
     });
 
-    formData.append("managerId", authUser.cognitoInfo.userId);
+    formData.append("managerId", session.user.id);
 
     await createProperty(formData);
   };
@@ -199,10 +200,10 @@ const NewProperty = () => {
                                         return checked
                                           ? field.onChange([...field.value, amenity])
                                           : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== amenity
-                                              )
-                                            );
+                                            field.value?.filter(
+                                              (value) => value !== amenity
+                                            )
+                                          );
                                       }}
                                     />
                                   </FormControl>
@@ -248,10 +249,10 @@ const NewProperty = () => {
                                         return checked
                                           ? field.onChange([...field.value, highlight])
                                           : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== highlight
-                                              )
-                                            );
+                                            field.value?.filter(
+                                              (value) => value !== highlight
+                                            )
+                                          );
                                       }}
                                     />
                                   </FormControl>

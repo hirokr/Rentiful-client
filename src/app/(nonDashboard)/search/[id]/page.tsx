@@ -1,7 +1,7 @@
 "use client";
 
-import { useGetAuthUserQuery } from "@/state/api";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import React, { useState } from "react";
 import ImagePreviews from "./ImagePreviews";
 import PropertyOverview from "./PropertyOverview";
@@ -14,7 +14,7 @@ const SingleListing = () => {
   const { id } = useParams();
   const propertyId = String(id);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
 
   return (
     <div>
@@ -33,7 +33,7 @@ const SingleListing = () => {
         </div>
       </div>
 
-      {authUser && (
+      {session?.user && (
         <ApplicationModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}

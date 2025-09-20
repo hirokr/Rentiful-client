@@ -1,5 +1,4 @@
-import { cleanParams, createNewUserInDatabase, withToast } from "@/lib/utils";
-import { auth } from "@/auth";
+import { cleanParams, withToast } from "@/lib/utils";
 import {
   Application,
   Lease,
@@ -9,40 +8,41 @@ import {
   Tenant,
 } from "@/types/prismaTypes";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import { getSession } from "next-auth/react";
 
 import { FiltersState } from ".";
 
-const fetchAuthSession = async () => {
-  const session = await auth();
-  return {
-    tokens: {
-      idToken: session?.user?.id || null,
-    },
-  };
-};
+// Custom base query that handles authentication
+const baseQueryWithAuth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  const baseQuery = fetchBaseQuery({
+    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001",
+    prepareHeaders: async (headers) => {
+      try {
+        // Get session from NextAuth
+        const session = await getSession();
 
-const getCurrentUser = async () => {
-  const session = await auth();
-  return session?.user
-    ? {
-      userId: session.user.id,
-      role: session.user.role,
-      email: session.user.email,
-    }
-    : null;
+        if (session?.user) {
+          // Add user ID as authorization token
+          headers.set('Authorization', `Bearer ${session.user.id}`);
+        }
+      } catch (error) {
+        console.error('Failed to get session for API headers:', error);
+      }
+
+      return headers;
+    },
+  });
+
+  return baseQuery(args, api, extraOptions);
 };
 
 export const api = createApi({
-  baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001",
-    prepareHeaders: async (headers) => {
-      const session = await auth();
-      if (session?.user?.id) {
-        headers.set("Authorization", `Bearer ${session.user.id}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithAuth,
   reducerPath: "api",
   tagTypes: [
     "Managers",
@@ -54,52 +54,52 @@ export const api = createApi({
     "Applications",
   ],
   endpoints: (build) => ({
-    getAuthUser: build.query<User, void>({
-      queryFn: async (_, _queryApi, _extraoptions, fetchWithBQ) => {
-        try {
-          const user = await getCurrentUser();
+    // getAuthUser: build.query<ApiUser, void>({
+    //   queryFn: async (_, _queryApi, _extraoptions, fetchWithBQ) => {
+    //     try {
+    //       const user = await getCurrentUser();
 
-          if (!user) {
-            return { error: "No authenticated user found" };
-          }
+    //       if (!user) {
+    //         return { error: "No authenticated user found" };
+    //       }
 
-          const userRole = user.role as string;
+    //       const userRole = user.role as string;
 
-          const endpoint =
-            userRole === "manager" ? `/managers/me` : `/tenants/me`;
+    //       const endpoint =
+    //         userRole === "manager" ? `/managers/me` : `/tenants/me`;
 
-          let userDetailsResponse = await fetchWithBQ(endpoint);
+    //       let userDetailsResponse = await fetchWithBQ(endpoint);
 
-          // if user doesn't exist, create new user
-          if (
-            userDetailsResponse.error &&
-            userDetailsResponse.error.status === 404
-          ) {
-            userDetailsResponse = await createNewUserInDatabase(
-              user,
-              null,
-              userRole,
-              fetchWithBQ
-            );
-          }
+    //       // if user doesn't exist, create new user
+    //       if (
+    //         userDetailsResponse.error &&
+    //         userDetailsResponse.error.status === 404
+    //       ) {
+    //         userDetailsResponse = await createNewUserInDatabase(
+    //           user,
+    //           null,
+    //           userRole,
+    //           fetchWithBQ
+    //         );
+    //       }
 
-          return {
-            data: {
-              cognitoInfo: {
-                userId: user.userId,
-                username: user.email, // use email as username since it's not provided by auth service
-                email: user.email, // flatten email property
-                role: user.role,
-              },
-              userInfo: userDetailsResponse.data as Tenant | Manager,
-              userRole,
-            },
-          };
-        } catch (error: any) {
-          return { error: error.message || "Could not fetch user data" };
-        }
-      },
-    }),
+    //       return {
+    //         data: {
+    //           cognitoInfo: {
+    //             userId: user.userId,
+    //             username: user.email, // use email as username since it's not provided by auth service
+    //             email: user.email, // flatten email property
+    //             role: user.role,
+    //           },
+    //           userInfo: userDetailsResponse.data as Tenant | Manager,
+    //           userRole,
+    //         },
+    //       };
+    //     } catch (error: any) {
+    //       return { error: error.message || "Could not fetch user data" };
+    //     }
+    //   },
+    // }),
 
     // property related endpoints
     getProperties: build.query<
@@ -142,7 +142,7 @@ export const api = createApi({
 
     getProperty: build.query<Property, string>({
       query: (id) => `properties/${id}`,
-      providesTags: (result, error, id) => [{ type: "PropertyDetails", id }],
+      providesTags: (_, __, id) => [{ type: "PropertyDetails", id }],
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, {
           error: `Failed to load property details`,
@@ -157,6 +157,17 @@ export const api = createApi({
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, {
           error: "Failed to load tenant profile.",
+        });
+      },
+    }),
+
+    // manager related endpoints
+    getManager: build.query<Manager, void>({
+      query: () => `managers/me`,
+      providesTags: (result) => [{ type: "Managers", id: result?.id }],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          error: "Failed to load manager profile.",
         });
       },
     }),
@@ -344,7 +355,7 @@ export const api = createApi({
 });
 
 export const {
-  useGetAuthUserQuery,
+  // useGetAuthUserQuery,
   useUpdateTenantSettingsMutation,
   useUpdateManagerSettingsMutation,
   useGetPropertiesQuery,
@@ -353,6 +364,7 @@ export const {
   useGetManagerPropertiesQuery,
   useCreatePropertyMutation,
   useGetTenantQuery,
+  useGetManagerQuery,
   useAddFavoritePropertyMutation,
   useRemoveFavoritePropertyMutation,
   useGetLeasesQuery,

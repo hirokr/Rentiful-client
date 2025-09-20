@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { useGetAuthUserQuery } from "@/state/api";
 import { Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const router = useRouter();
 
   const handleButtonClick = () => {
-    if (authUser) {
+    if (session?.user) {
       onOpenModal();
     } else {
       router.push("/signin");
@@ -34,7 +34,7 @@ const ContactWidget = ({ onOpenModal }: ContactWidgetProps) => {
         className="w-full bg-primary-700 text-white hover:bg-primary-600"
         onClick={handleButtonClick}
       >
-        {authUser ? "Submit Application" : "Sign In to Apply"}
+        {session?.user ? "Submit Application" : "Sign In to Apply"}
       </Button>
 
       <hr className="my-4" />

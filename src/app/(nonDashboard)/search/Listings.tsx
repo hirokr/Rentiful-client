@@ -1,6 +1,5 @@
 import {
   useAddFavoritePropertyMutation,
-  useGetAuthUserQuery,
   useGetPropertiesQuery,
   useGetTenantQuery,
   useRemoveFavoritePropertyMutation,
@@ -8,13 +7,14 @@ import {
 import { useAppSelector } from "@/state/redux";
 import { Property } from "@/types/prismaTypes";
 import Card from "@/components/Card";
+import { useSession } from "next-auth/react";
 import React from "react";
 import CardCompact from "@/components/CardCompact";
 
 const Listings = () => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const { data: tenant } = useGetTenantQuery(undefined, {
-    skip: !authUser?.userRole || authUser.userRole !== "tenant",
+    skip: !session?.user?.id || session.user.role !== "tenant",
   });
   const [addFavorite] = useAddFavoritePropertyMutation();
   const [removeFavorite] = useRemoveFavoritePropertyMutation();
@@ -28,7 +28,7 @@ const Listings = () => {
   } = useGetPropertiesQuery(filters);
 
   const handleFavoriteToggle = async (propertyId: string) => {
-    if (!authUser) return;
+    if (!session?.user) return;
 
     const isFavorite = tenant?.favorites?.some(
       (fav: Property) => fav.id === propertyId
@@ -69,7 +69,7 @@ const Listings = () => {
                   ) || false
                 }
                 onFavoriteToggle={() => handleFavoriteToggle(property.id)}
-                showFavoriteButton={!!authUser}
+                showFavoriteButton={!!session?.user}
                 propertyLink={`/search/${property.id}`}
               />
             ) : (
@@ -82,7 +82,7 @@ const Listings = () => {
                   ) || false
                 }
                 onFavoriteToggle={() => handleFavoriteToggle(property.id)}
-                showFavoriteButton={!!authUser}
+                showFavoriteButton={!!session?.user}
                 propertyLink={`/search/${property.id}`}
               />
             )

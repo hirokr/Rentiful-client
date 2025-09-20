@@ -3,17 +3,18 @@
 import Card from "@/components/Card";
 import Header from "@/components/Header";
 import Loading from "@/components/Loading";
-import { useGetAuthUserQuery, useGetManagerPropertiesQuery } from "@/state/api";
+import { useGetManagerPropertiesQuery } from "@/state/api";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const Properties = () => {
-  const { data: authUser } = useGetAuthUserQuery();
+  const { data: session } = useSession();
   const {
     data: managerProperties,
     isLoading,
     error,
   } = useGetManagerPropertiesQuery(undefined, {
-    skip: !authUser?.userRole || authUser.userRole !== "manager",
+    skip: !session?.user?.role || session.user.role !== "manager",
   });
 
   if (isLoading) return <Loading />;
@@ -31,7 +32,7 @@ const Properties = () => {
             key={property.id}
             property={property}
             isFavorite={false}
-            onFavoriteToggle={() => {}}
+            onFavoriteToggle={() => { }}
             showFavoriteButton={false}
             propertyLink={`/managers/properties/${property.id}`}
           />

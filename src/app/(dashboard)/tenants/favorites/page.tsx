@@ -4,30 +4,25 @@ import Card from "@/components/Card";
 import Header from "@/components/Header";
 import Loading from "@/components/Loading";
 import {
-  useGetAuthUserQuery,
   useGetPropertiesQuery,
   useGetTenantQuery,
 } from "@/state/api";
+import { useSession } from "next-auth/react";
 import React from "react";
 
 const Favorites = () => {
-  const { data: authUser } = useGetAuthUserQuery();
-  let user = authUser?.userInfo
-  // const { data: tenant } = useGetTenantQuery(
-  //   authUser?.cognitoInfo?.userId || "",
-  //   {
-    //     skip: !authUser?.cognitoInfo?.userId,
-    //   }
-    // );
-    
-    const {
-      data: favoriteProperties,
-      isLoading,
-      error,
-    } = useGetPropertiesQuery(
-      { favoriteIds: user?.favorites?.map((fav: { id: string }) => fav.id) },
-      { skip: !user?.favorites || user?.favorites.length === 0 }
-    );
+  const { data: session } = useSession();
+  const { data: tenant } = useGetTenantQuery(undefined, {
+    skip: !session?.user?.id,
+  });
+  const {
+    data: favoriteProperties,
+    isLoading,
+    error,
+  } = useGetPropertiesQuery(
+    { favoriteIds: tenant?.favorites?.map((fav: { id: string }) => fav.id) },
+    { skip: !tenant?.favorites || tenant?.favorites.length === 0 }
+  );
 
   if (isLoading) return <Loading />;
   if (error) return <div>Error loading favorites</div>;
@@ -44,7 +39,7 @@ const Favorites = () => {
             key={property.id}
             property={property}
             isFavorite={true}
-            onFavoriteToggle={() => {}}
+            onFavoriteToggle={() => { }}
             showFavoriteButton={false}
             propertyLink={`/tenants/residences/${property.id}`}
           />
