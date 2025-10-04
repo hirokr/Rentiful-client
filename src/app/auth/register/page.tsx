@@ -34,7 +34,7 @@ export default function RegisterPage() {
     const checkSession = async () => {
       const session = await getSession()
       if (session) {
-        router.push('/dashboard')
+        router.push('/')
       }
     }
     checkSession()
