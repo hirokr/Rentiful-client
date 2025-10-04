@@ -24,6 +24,7 @@ export default function RegisterPage() {
     phoneNumber: '',
     role: 'TENANT' as 'TENANT' | 'MANAGER'
   })
+  
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null)
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
