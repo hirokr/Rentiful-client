@@ -20,7 +20,7 @@ const baseQueryWithAuth: BaseQueryFn<
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
   const baseQuery = fetchBaseQuery({
-    baseUrl: process.env.NEST_API_URL || "http://localhost:3001",
+    baseUrl: process.env.NEST_API_URL,
     prepareHeaders: async (headers) => {
       try {
         // Get session from NextAuth
