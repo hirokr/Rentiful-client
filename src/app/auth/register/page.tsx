@@ -334,7 +334,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <Button
               variant="outline"
               onClick={() => handleOAuthSignIn('google')}
@@ -353,7 +353,7 @@ export default function RegisterPage() {
               <FontAwesomeIcon icon={faGithub} className="mr-2 h-4 w-4" />
               GitHub
             </Button>
-          </div>
+          </div> */}
 
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Already have an account? </span>
